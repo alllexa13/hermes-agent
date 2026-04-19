@@ -33,7 +33,7 @@ COPY scripts/whatsapp-bridge/package.json scripts/whatsapp-bridge/package-lock.j
 COPY web/package.json web/package-lock.json web/
 
 # 1. Основные зависимости
-RUN npm install --prefer-offline --no-audit
+RUN npm install --prefer-offline --no-audit --no-fund --loglevel verbose
 
 # 2. Скачивание Chromium (самый долгий этап, может занимать 5-10 минут)
 RUN npx playwright install --with-deps chromium --only-shell
