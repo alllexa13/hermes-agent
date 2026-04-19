@@ -32,8 +32,15 @@ COPY package.json package-lock.json ./
 COPY scripts/whatsapp-bridge/package.json scripts/whatsapp-bridge/package-lock.json scripts/whatsapp-bridge/
 COPY web/package.json web/package-lock.json web/
 
-# 1. Основные зависимости
-RUN npm install --prefer-offline --no-audit --no-fund --loglevel verbose
+# 1. Устанавливаем пакеты, НО запрещаем им автоматически запускать скачивание браузеров
+RUN npm install --prefer-offline --no-audit --no-fund --ignore-scripts
+
+# 2. Теперь запускаем основные скрипты вручную (те, что точно нужны)
+RUN node node_modules/agent-browser/scripts/postinstall.js || true
+
+# 3. Пробуем скачать браузер Camoufox отдельно (если зависнет здесь — будем знать точно)
+# Если он вам не критичен, этот шаг можно вообще удалить, чтобы не ждать.
+RUN npx camoufox-js fetch || true
 
 # 2. Скачивание Chromium (самый долгий этап, может занимать 5-10 минут)
 RUN npx playwright install --with-deps chromium --only-shell
