@@ -2,14 +2,13 @@ FROM ghcr.io/astral-sh/uv:0.11.6-python3.13-trixie@sha256:b3c543b6c4f23a5f2df228
 FROM tianon/gosu:1.19-trixie@sha256:3b176695959c71e123eb390d427efc665eeb561b1540e82679c15e992006b8b9 AS gosu_source
 FROM debian:13.4
 
-# Disable Python stdout buffering to ensure logs are printed immediately
+# Отключаем буферизацию вывода Python для мгновенного появления логов
 ENV PYTHONUNBUFFERED=1
 
-# Store Playwright browsers outside the volume mount so the build-time
-# install survives the /opt/data volume overlay at runtime.
+# Путь для браузеров Playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 
-# Добавляем curl и репозитори Node.js 22
+# 1. Установка системных зависимостей и Node.js 22
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl ca-certificates gnupg build-essential python3 ripgrep ffmpeg gcc python3-dev libffi-dev procps git && \
@@ -17,7 +16,7 @@ RUN apt-get update && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Non-root user for runtime; UID can be overridden via HERMES_UID at runtime
+# Создаем пользователя hermes
 RUN useradd -u 10000 -m -d /opt/data hermes
 
 COPY --chmod=0755 --from=gosu_source /gosu /usr/local/bin/
@@ -25,49 +24,40 @@ COPY --chmod=0755 --from=uv_source /usr/local/bin/uv /usr/local/bin/uvx /usr/loc
 
 WORKDIR /opt/hermes
 
-# ---------- Layer-cached dependency install ----------
-# Copy only package manifests first so npm install + Playwright are cached
-# unless the lockfiles themselves change.
+# 2. Копируем манифесты пакетов для кэширования слоев
 COPY package.json package-lock.json ./
 COPY scripts/whatsapp-bridge/package.json scripts/whatsapp-bridge/package-lock.json scripts/whatsapp-bridge/
 COPY web/package.json web/package-lock.json web/
 
-# 1. Устанавливаем пакеты, НО запрещаем им автоматически запускать скачивание браузеров
+# 3. Установка JS-зависимостей (без автоматических скриптов)
 RUN npm install --prefer-offline --no-audit --no-fund --ignore-scripts
 
-# 2. Теперь запускаем основные скрипты вручную (те, что точно нужны)
+# 4. Установка бинарных файлов агента
 RUN node node_modules/agent-browser/scripts/postinstall.js || true
 
-# 3. Пробуем скачать браузер Camoufox отдельно (если зависнет здесь — будем знать точно)
-# Если он вам не критичен, этот шаг можно вообще удалить, чтобы не ждать.
-RUN npx camoufox-js fetch || true
-
-# 2. Скачивание Chromium (самый долгий этап, может занимать 5-10 минут)
+# 5. Установка браузера Chromium (этот шаг стабилен)
 RUN npx playwright install --with-deps chromium --only-shell
 
-# 3. WhatsApp Bridge
+# 6. Установка зависимостей для внутренних модулей
 RUN cd scripts/whatsapp-bridge && npm install --prefer-offline --no-audit
-
-# 4. Web интерфейс
 RUN cd web && npm install --prefer-offline --no-audit
 
-# 5. Очистка кэша
+# 7. Очистка кэша NPM
 RUN npm cache clean --force
 
-# ---------- Source code ----------
-# .dockerignore excludes node_modules, so the installs above survive.
+# 8. Копируем исходный код
 COPY --chown=hermes:hermes . .
 
-# Build web dashboard (Vite outputs to hermes_cli/web_dist/)
-RUN cd web && npm run build
+# 9. Сборка веб-панели
+RUN cd web && npm build || cd web && npm run build
 
-# ---------- Python virtualenv ----------
+# 10. Настройка Python окружения (виртуальная среда)
 RUN chown hermes:hermes /opt/hermes
 USER hermes
 RUN uv venv && \
     uv pip install --no-cache-dir -e ".[all]"
 
-# ---------- Runtime ----------
+# Настройки запуска
 ENV HERMES_WEB_DIST=/opt/hermes/hermes_cli/web_dist
 ENV HERMES_HOME=/opt/data
 VOLUME [ "/opt/data" ]
