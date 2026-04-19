@@ -32,11 +32,20 @@ COPY package.json package-lock.json ./
 COPY scripts/whatsapp-bridge/package.json scripts/whatsapp-bridge/package-lock.json scripts/whatsapp-bridge/
 COPY web/package.json web/package-lock.json web/
 
-RUN npm install --prefer-offline --no-audit && \
-    npx playwright install --with-deps chromium --only-shell && \
-    (cd scripts/whatsapp-bridge && npm install --prefer-offline --no-audit) && \
-    (cd web && npm install --prefer-offline --no-audit) && \
-    npm cache clean --force
+# 1. Основные зависимости
+RUN npm install --prefer-offline --no-audit
+
+# 2. Скачивание Chromium (самый долгий этап, может занимать 5-10 минут)
+RUN npx playwright install --with-deps chromium --only-shell
+
+# 3. WhatsApp Bridge
+RUN cd scripts/whatsapp-bridge && npm install --prefer-offline --no-audit
+
+# 4. Web интерфейс
+RUN cd web && npm install --prefer-offline --no-audit
+
+# 5. Очистка кэша
+RUN npm cache clean --force
 
 # ---------- Source code ----------
 # .dockerignore excludes node_modules, so the installs above survive.
