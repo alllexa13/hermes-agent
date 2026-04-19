@@ -54,11 +54,5 @@ ENV HERMES_HOME=/opt/data
 VOLUME [ "/opt/data" ]
 
 # ЭТОТ ПУСКОВОЙ СКРИПТ СОЗДАЕТ КОНФИГ И ЗАПУСКАЕТ БОТА
-ENTRYPOINT [ "/bin/bash", "-c", " \
-    mkdir -p /opt/data && \
-    echo \"provider: openai\" > /opt/data/config.yaml && \
-    echo \"model: $HERMES_MODEL\" >> /opt/data/config.yaml && \
-    echo \"auxiliary_provider: openai\" >> /opt/data/config.yaml && \
-    echo \"auxiliary_model: gpt-4o-mini\" >> /opt/data/config.yaml && \
-    source .venv/bin/activate && \
-    hermes gateway\" " ]
+ENTRYPOINT ["/bin/bash", "-c", "mkdir -p /opt/data && echo 'provider: openai' > /opt/data/config.yaml && echo \"model: $HERMES_MODEL\" >> /opt/data/config.yaml && echo 'auxiliary_provider: openai' >> /opt/data/config.yaml && echo 'auxiliary_model: gpt-4o-mini' >> /opt/data/config.yaml && source .venv/bin/activate && hermes gateway"]
+
