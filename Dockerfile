@@ -44,3 +44,21 @@ VOLUME [ "/opt/data" ]
 
 # ЭТА КОМАНДА ПРИНУДИТЕЛЬНО ПРОПИСЫВАЕТ OPENAI ПЕРЕД ЗАПУСКОМ
 ENTRYPOINT [ "/bin/bash", "-c", "source .venv/bin/activate && hermes config set HERMES_PROVIDER openai && hermes config set HERMES_MODEL $HERMES_MODEL && hermes gateway" ]
+
+# (Все до этого момента оставляем так же, как в прошлом моем сообщении)
+# ... копирование и установка ...
+
+# ФИНАЛЬНАЯ ЧАСТЬ (ЗАМЕНИТЕ ЕЁ):
+ENV HERMES_WEB_DIST=/opt/hermes/hermes_cli/web_dist
+ENV HERMES_HOME=/opt/data
+VOLUME [ "/opt/data" ]
+
+# ЭТОТ ПУСКОВОЙ СКРИПТ СОЗДАЕТ КОНФИГ И ЗАПУСКАЕТ БОТА
+ENTRYPOINT [ "/bin/bash", "-c", " \
+    mkdir -p /opt/data && \
+    echo \"provider: openai\" > /opt/data/config.yaml && \
+    echo \"model: $HERMES_MODEL\" >> /opt/data/config.yaml && \
+    echo \"auxiliary_provider: openai\" >> /opt/data/config.yaml && \
+    echo \"auxiliary_model: gpt-4o-mini\" >> /opt/data/config.yaml && \
+    source .venv/bin/activate && \
+    hermes gateway\" " ]
