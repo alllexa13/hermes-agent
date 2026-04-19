@@ -41,4 +41,4 @@ ENV HERMES_WEB_DIST=/opt/hermes/hermes_cli/web_dist
 ENV HERMES_HOME=/opt/data
 VOLUME [ "/opt/data" ]
 
-ENTRYPOINT ["/bin/bash", "-c", "mkdir -p /opt/data && echo 'provider: openai' > /opt/data/config.yaml && echo \"model: $HERMES_MODEL\" >> /opt/data/config.yaml && echo 'auxiliary_provider: openai' >> /opt/data/config.yaml && echo \"auxiliary_model: $HERMES_MODEL\" >> /opt/data/config.yaml && source .venv/bin/activate && hermes gateway"]
+ENTRYPOINT ["/bin/bash", "-c", "mkdir -p /opt/data && echo -e \"model:\\n  provider: \\\"openai\\\"\\n  default: \\\"$HERMES_MODEL\\\"\\n  auxiliary_provider: \\\"openai\\\"\\n  auxiliary_model: \\\"$HERMES_MODEL\\\"\" > /opt/data/config.yaml && source .venv/bin/activate && hermes gateway"]
