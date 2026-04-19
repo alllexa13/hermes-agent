@@ -18,41 +18,27 @@ COPY --chmod=0755 --from=uv_source /usr/local/bin/uv /usr/local/bin/uvx /usr/loc
 
 WORKDIR /opt/hermes
 
+# КЭШИРУЕМ ЗАВИСИМОСТИ (Они не будут переустанавливаться при изменении кода)
 COPY package.json package-lock.json ./
-COPY scripts/whatsapp-bridge/package.json scripts/whatsapp-bridge/package-lock.json scripts/whatsapp-bridge/
-COPY web/package.json web/package-lock.json web/
-
 RUN npm install --prefer-offline --no-audit --no-fund --ignore-scripts
+
+# КЭШИРУЕМ PYTHON ЗАВИСИМОСТИ (Это сэкономит те самые 20 минут)
+COPY pyproject.toml ./
+RUN uv venv && uv pip install --no-cache-dir -e ".[all]" || true
+
+# Устанавливаем playwright
 RUN node node_modules/agent-browser/scripts/postinstall.js || true
 RUN npx playwright install --with-deps chromium --only-shell
 
-RUN cd scripts/whatsapp-bridge && npm install --prefer-offline --no-audit
-RUN cd web && npm install --prefer-offline --no-audit
-RUN npm cache clean --force
-
+# Копируем остальное (теперь любое изменение кода не сбросит установку библиотек сверху)
 COPY --chown=hermes:hermes . .
-RUN cd web && npm run build
 
+RUN cd web && npm run build
 RUN chown hermes:hermes /opt/hermes
 USER hermes
-RUN uv venv && \
-    uv pip install --no-cache-dir -e ".[all]"
 
 ENV HERMES_WEB_DIST=/opt/hermes/hermes_cli/web_dist
 ENV HERMES_HOME=/opt/data
 VOLUME [ "/opt/data" ]
 
-# ЭТА КОМАНДА ПРИНУДИТЕЛЬНО ПРОПИСЫВАЕТ OPENAI ПЕРЕД ЗАПУСКОМ
-ENTRYPOINT [ "/bin/bash", "-c", "source .venv/bin/activate && hermes config set HERMES_PROVIDER openai && hermes config set HERMES_MODEL $HERMES_MODEL && hermes gateway" ]
-
-# (Все до этого момента оставляем так же, как в прошлом моем сообщении)
-# ... копирование и установка ...
-
-# ФИНАЛЬНАЯ ЧАСТЬ (ЗАМЕНИТЕ ЕЁ):
-ENV HERMES_WEB_DIST=/opt/hermes/hermes_cli/web_dist
-ENV HERMES_HOME=/opt/data
-VOLUME [ "/opt/data" ]
-
-# ЭТОТ ПУСКОВОЙ СКРИПТ СОЗДАЕТ КОНФИГ И ЗАПУСКАЕТ БОТА
-ENTRYPOINT ["/bin/bash", "-c", "mkdir -p /opt/data && echo 'provider: openai' > /opt/data/config.yaml && echo \"model: $HERMES_MODEL\" >> /opt/data/config.yaml && echo 'auxiliary_provider: openai' >> /opt/data/config.yaml && echo 'auxiliary_model: gpt-4o-mini' >> /opt/data/config.yaml && source .venv/bin/activate && hermes gateway"]
-
+ENTRYPOINT ["/bin/bash", "-c", "mkdir -p /opt/data && echo 'provider: openai' > /opt/data/config.yaml && echo \"model: $HERMES_MODEL\" >> /opt/data/config.yaml && echo 'auxiliary_provider: openai' >> /opt/data/config.yaml && echo \"auxiliary_model: $HERMES_MODEL\" >> /opt/data/config.yaml && source .venv/bin/activate && hermes gateway"]
