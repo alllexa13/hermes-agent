@@ -31,7 +31,6 @@ RUN cd web && npm install --prefer-offline --no-audit
 RUN npm cache clean --force
 
 COPY --chown=hermes:hermes . .
-
 RUN cd web && npm run build
 
 RUN chown hermes:hermes /opt/hermes
@@ -43,5 +42,5 @@ ENV HERMES_WEB_DIST=/opt/hermes/hermes_cli/web_dist
 ENV HERMES_HOME=/opt/data
 VOLUME [ "/opt/data" ]
 
-# ЭТА СТРОЧКА ЗАПУСКАЕТ БОТА И НЕ ДАЕТ ЕМУ ВЫКЛЮЧИТЬСЯ
-ENTRYPOINT [ "/bin/bash", "-c", "source .venv/bin/activate && hermes gateway" ]
+# ЭТА КОМАНДА ПРИНУДИТЕЛЬНО ПРОПИСЫВАЕТ OPENAI ПЕРЕД ЗАПУСКОМ
+ENTRYPOINT [ "/bin/bash", "-c", "source .venv/bin/activate && hermes config set HERMES_PROVIDER openai && hermes config set HERMES_MODEL $HERMES_MODEL && hermes gateway" ]
